@@ -12,5 +12,7 @@ namespace CosmosDBTaxiApp.Model
         public Guid Id { get; set; }
         [JsonProperty(PropertyName = "name")]
         public string Name { get; set; }
+        [JsonProperty(PropertyName = "entity")]
+        public string Entity { get; set; }
     }
 }

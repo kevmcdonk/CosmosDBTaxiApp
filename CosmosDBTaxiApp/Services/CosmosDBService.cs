@@ -28,7 +28,7 @@ namespace CosmosDBTaxiApp.Services
         {
             try
             {
-                var document = await _container.ReadItemAsync<T>(id, new PartitionKey(id));
+                var document = await _container.ReadItemAsync<T>(id, new PartitionKey(typeof(T).ToString()));
                 return (T)(dynamic)document;
             }
             catch (Microsoft.Azure.Cosmos.CosmosException e)
@@ -68,7 +68,7 @@ namespace CosmosDBTaxiApp.Services
         {
             try
             {
-                ItemResponse<T> response = await this._container.DeleteItemAsync<T>(id, new PartitionKey(id));
+                ItemResponse<T> response = await this._container.DeleteItemAsync<T>(id, new PartitionKey(typeof(T).ToString()));
                 return response.Resource;
             }
             catch (Microsoft.Azure.Cosmos.CosmosException e)
@@ -99,7 +99,7 @@ namespace CosmosDBTaxiApp.Services
         {
             try
             {
-                ItemResponse<T> response = await this._container.UpsertItemAsync<T>(item, new PartitionKey(item.Id.ToString()));
+                ItemResponse<T> response = await this._container.UpsertItemAsync<T>(item, new PartitionKey(typeof(T).ToString()));
                 return response.Resource;
 
             }

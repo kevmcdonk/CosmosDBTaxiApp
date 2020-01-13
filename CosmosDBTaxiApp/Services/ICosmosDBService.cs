@@ -8,11 +8,11 @@ namespace CosmosDBTaxiApp.Services
 {
     public interface ICosmosDBService<T> where T : BaseModel
     {
-        public Task<T> GetItemAsync(string id);
-        public Task<T> AddItemAsync(T item);
-        public Task<T> DeleteItemAsync(string id);
-        public Task<IEnumerable<T>> GetItemsAsync(string queryString);
-        public Task<T> UpdateItemAsync(T item);
+        Task<T> GetItemAsync(string id);
+        Task<T> AddItemAsync(T item);
+        Task<T> DeleteItemAsync(string id);
+        Task<IEnumerable<T>> GetItemsAsync(string queryString);
+        Task<T> UpdateItemAsync(T item);
 
     }
 }

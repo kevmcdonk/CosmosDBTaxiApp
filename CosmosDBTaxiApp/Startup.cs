@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CosmosDBTaxiApp.Model;
 using CosmosDBTaxiApp.Services;
+using Microsoft.AspNet.OData.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -29,6 +31,9 @@ namespace CosmosDBTaxiApp
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddOData();
+            services.AddControllers(mvcOptions =>
+                mvcOptions.EnableEndpointRouting = false);
             IConfigurationSection configurationSection = Configuration.GetSection("CosmosDb");
             string databaseName = configurationSection.GetSection("DatabaseName").Value;
             string containerName = configurationSection.GetSection("ContainerName").Value;
@@ -40,7 +45,7 @@ namespace CosmosDBTaxiApp
                                 .Build();
 
             DatabaseResponse database = client.CreateDatabaseIfNotExistsAsync(databaseName).GetAwaiter().GetResult();
-            database.Database.CreateContainerIfNotExistsAsync(containerName, "/id").GetAwaiter().GetResult();
+            database.Database.CreateContainerIfNotExistsAsync(containerName, "/entity").GetAwaiter().GetResult();
 
             CosmosDBService<Journey> journeyService = new CosmosDBService<Journey>(client, databaseName, containerName);
             services.AddSingleton<ICosmosDBService<Journey>>(journeyService);
@@ -53,6 +58,7 @@ namespace CosmosDBTaxiApp
 
             services.AddControllers();
             BaseDataService.GenerateBaseData(client, databaseName, containerName);
+            StartChangeFeedProcessorAsync(client, Configuration).GetAwaiter().GetResult(); ;
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -69,12 +75,57 @@ namespace CosmosDBTaxiApp
 
             app.UseAuthorization();
 
+            /*
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
             });
+            */
+
+            app.UseMvc(routes =>
+            {
+                routes.MapRoute(
+                    name: "default",
+                    template: "{controller=Item}/{action=Index}/{id?}");
+
+                routes.EnableDependencyInjection();
+                routes.Select().Filter().OrderBy().Expand();
+            });
+
         }
 
-        
+        private static async Task<ChangeFeedProcessor> StartChangeFeedProcessorAsync(
+            CosmosClient cosmosClient,
+            IConfiguration configuration)
+        {
+            string databaseName = configuration["SourceDatabaseName"];
+            string sourceContainerName = configuration["SourceContainerName"];
+            string leaseContainerName = configuration["LeasesContainerName"];
+
+            Container leaseContainer = cosmosClient.GetContainer(databaseName, leaseContainerName);
+            ChangeFeedProcessor changeFeedProcessor = cosmosClient.GetContainer(databaseName, sourceContainerName)
+                .GetChangeFeedProcessorBuilder<Journey>("changeFeedSample", HandleChangesAsync)
+                    .WithInstanceName("consoleHost")
+                    .WithLeaseContainer(leaseContainer)
+                    .Build();
+
+            Console.WriteLine("Starting Change Feed Processor...");
+            await changeFeedProcessor.StartAsync();
+            Console.WriteLine("Change Feed Processor started.");
+            return changeFeedProcessor;
+        }
+
+        static async Task HandleChangesAsync(IReadOnlyCollection<Journey> changes, CancellationToken cancellationToken)
+        {
+            Console.WriteLine("Started handling changes...");
+            foreach (Journey item in changes)
+            {
+                Console.WriteLine($"Detected operation for item with id {item.Id}, created on {item.JourneyDate}.");
+                // Simulate some asynchronous operation
+                await Task.Delay(10);
+            }
+
+            Console.WriteLine("Finished handling changes.");
+        }
     }
 }

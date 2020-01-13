@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using CosmosDBTaxiApp.Model;
 using CosmosDBTaxiApp.Services;
+using Microsoft.AspNet.OData;
+
 
 namespace CosmosDBTaxiApp.Controllers
 {
@@ -21,6 +23,8 @@ namespace CosmosDBTaxiApp.Controllers
             _journeyService = journeyService;
         }
 
+        [HttpGet]
+        [EnableQuery()]
         public IEnumerable<Journey> Get()
         {
             return _journeyService.GetItemsAsync("select * from c").GetAwaiter().GetResult();
@@ -37,6 +41,13 @@ namespace CosmosDBTaxiApp.Controllers
         public Journey Put(Journey journey)
         {
             Journey createdJourney = _journeyService.UpdateItemAsync(journey).GetAwaiter().GetResult();
+            return createdJourney;
+        }
+
+        [HttpDelete]
+        public Journey Delete(Journey journey)
+        {
+            Journey createdJourney = _journeyService.DeleteItemAsync(journey.Id.ToString()).GetAwaiter().GetResult();
             return createdJourney;
         }
     }
